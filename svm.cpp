@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <locale.h>
+#include <dlfcn.h>
 #include "svm.h"
 int libsvm_version = LIBSVM_VERSION;
 typedef float Qfloat;
@@ -199,6 +200,8 @@ public:
 	virtual ~QMatrix() {}
 };
 
+extern "C" double (*custom_kernel)(const svm_node *, const svm_node *) = NULL;
+
 class Kernel: public QMatrix {
 public:
 	Kernel(int l, svm_node * const * x, const svm_parameter& param);
@@ -248,6 +251,10 @@ private:
 	{
 		return x[i][(int)(x[j][0].value)].value;
 	}
+	double kernel_external(int i, int j) const
+	{
+		return custom_kernel(x[i],x[j]);
+	}
 };
 
 Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
@@ -271,6 +278,17 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param)
 		case PRECOMPUTED:
 			kernel_function = &Kernel::kernel_precomputed;
 			break;
+		case EXTERNAL:
+			void *lib_handle = dlopen("./libsvm_kernel.so.1.0.1",RTLD_NOW|RTLD_GLOBAL);
+			if(lib_handle == NULL) {
+			    printf("Failed loading lib\n");
+			    exit(1);
+			  } else {
+			    printf("Loaded lib successfully\n");
+			    custom_kernel = (double (*)(const svm_node*, const svm_node*))dlsym(lib_handle,"kernel");
+			  }
+			    		
+			kernel_function = &Kernel::kernel_external;
 	}
 
 	clone(x,x_,l);
@@ -367,7 +385,9 @@ double Kernel::k_function(const svm_node *x, const svm_node *y,
 			return tanh(param.gamma*dot(x,y)+param.coef0);
 		case PRECOMPUTED:  //x: test (validation), y: SV
 			return x[(int)(y->value)].value;
-		default:
+		case EXTERNAL:
+			return custom_kernel(x,y);
+		default: 
 			return 0;  // Unreachable 
 	}
 }
@@ -3051,7 +3071,8 @@ const char *svm_check_parameter(const svm_problem *prob, const svm_parameter *pa
 	   kernel_type != POLY &&
 	   kernel_type != RBF &&
 	   kernel_type != SIGMOID &&
-	   kernel_type != PRECOMPUTED)
+	   kernel_type != PRECOMPUTED &&
+	   kernel_type != EXTERNAL)
 		return "unknown kernel type";
 
 	if(param->gamma < 0)

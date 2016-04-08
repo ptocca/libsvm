@@ -25,6 +25,7 @@ void exit_with_help()
 	"	2 -- radial basis function: exp(-gamma*|u-v|^2)\n"
 	"	3 -- sigmoid: tanh(gamma*u'*v + coef0)\n"
 	"	4 -- precomputed kernel (kernel values in training_set_file)\n"
+	"   5 -- kernel function in dynamically loaded library\n"
 	"-d degree : set degree in kernel function (default 3)\n"
 	"-g gamma : set gamma in kernel function (default 1/num_features)\n"
 	"-r coef0 : set coef0 in kernel function (default 0)\n"
