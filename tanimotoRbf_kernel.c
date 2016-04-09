@@ -40,5 +40,13 @@ double kernel(const struct svm_node *px, const struct svm_node *py) {
 			}
 		}
 	}
+	while (px->index!=-1) {
+		sumX += px->value;
+		px++;
+	}
+	while (py->index!=-1) {
+		sumY += py->value;
+		py++;
+	}
 	return exp(-gammaParam * (2 - 2 * sumMin / (sumX + sumY - sumMin)));
 }

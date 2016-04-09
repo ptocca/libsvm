@@ -28,6 +28,14 @@ double kernel(const struct svm_node *px, const struct svm_node *py) {
 			}
 		}
 	}
+	while (px->index!=-1) {
+		sumX += px->value;
+		px++;
+	}
+	while (py->index!=-1) {
+		sumY += py->value;
+		py++;
+	}
 	return sumMin / (sumX + sumY - sumMin);
 }
 
