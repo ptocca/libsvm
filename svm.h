@@ -44,6 +44,8 @@ struct svm_parameter
 	double p;	/* for EPSILON_SVR */
 	int shrinking;	/* use the shrinking heuristics */
 	int probability; /* do probability estimates */
+	char *kernelLibName;  /* for kernels defined via external dynamic library */
+	char *kernelLibParams;  /* for kernels defined via external dynamic library */
 };
 
 //

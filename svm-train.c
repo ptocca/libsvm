@@ -38,6 +38,8 @@ void exit_with_help()
 	"-b probability_estimates : whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0)\n"
 	"-wi weight : set the parameter C of class i to weight*C, for C-SVC (default 1)\n"
 	"-v n: n-fold cross validation mode\n"
+	"-l libFileName"
+	"-x kernelParams"
 	"-q : quiet mode (no outputs)\n"
 	);
 	exit(1);
@@ -181,6 +183,8 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 	param.weight_label = NULL;
 	param.weight = NULL;
 	cross_validation = 0;
+	param.kernelLibName = NULL;
+	param.kernelLibParams = NULL;
 
 	// parse options
 	for(i=1;i<argc;i++)
@@ -245,6 +249,12 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 				param.weight = (double *)realloc(param.weight,sizeof(double)*param.nr_weight);
 				param.weight_label[param.nr_weight-1] = atoi(&argv[i-1][2]);
 				param.weight[param.nr_weight-1] = atof(argv[i]);
+				break;
+			case 'l':
+				(void)sscanf(argv[i],"%ms",&param.kernelLibName);
+				break;
+			case 'x':
+				(void)sscanf(argv[i],"%ms",&param.kernelLibParams);
 				break;
 			default:
 				fprintf(stderr,"Unknown option: -%c\n", argv[i-1][1]);

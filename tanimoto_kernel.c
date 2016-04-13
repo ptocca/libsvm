@@ -3,7 +3,7 @@
 
 #include "svm.h"
 
-void init() {
+void init(char *params) {
 
 }
 

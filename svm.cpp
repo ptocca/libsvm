@@ -272,23 +272,21 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param) :
 		kernel_function = &Kernel::kernel_precomputed;
 		break;
 	case EXTERNAL:
-		void *lib_handle = dlopen("./libsvm_kernel.so.1.0.1",
-				RTLD_NOW | RTLD_GLOBAL);
+		void *lib_handle = dlopen(param.kernelLibName, RTLD_NOW | RTLD_GLOBAL);
 		if (lib_handle == NULL) {
 			printf("Failed loading lib in Initializer\n");
 			exit(1);
 		}
-		void (*init)() = (void(*)())dlsym(lib_handle,"init");
-		if (init!=NULL)
-			init();
+		void (*init)(char *) = (void(*)(char *))dlsym(lib_handle,"init");
+		if (init != NULL)
+			init(param.kernelLibParams);
 		custom_kernel = (double (*)(const svm_node*,
-				const svm_node*))dlsym(lib_handle,"kernel");
-		if (custom_kernel==NULL) {
+				const svm_node*))dlsym(lib_handle,"kernel");if (custom_kernel==NULL) {
 			printf("Missing kernel function in kernel library\n");
-			exit(1);			
+			exit(1);
 		}
 		printf("Loaded lib successfully (Kernel::Kernel)\n");
-		kernel_function	= &Kernel::kernel_external;
+		kernel_function = &Kernel::kernel_external;
 	}
 
 	clone(x,x_,l);
@@ -2458,6 +2456,11 @@ int svm_save_model(const char *model_file_name, const svm_model *model) {
 	if (param.kernel_type == POLY || param.kernel_type == SIGMOID)
 		fprintf(fp, "coef0 %g\n", param.coef0);
 
+	if (param.kernel_type == EXTERNAL) {
+		fprintf(fp, "kernelLibName %s\n", param.kernelLibName);
+		fprintf(fp, "kernelLibParams %s\n", param.kernelLibParams);
+	}
+
 	int nr_class = model->nr_class;
 	int l = model->l;
 	fprintf(fp, "nr_class %d\n", nr_class);
@@ -2586,73 +2589,77 @@ bool read_model_header(FILE *fp, svm_model* model) {
 				fprintf(stderr, "unknown kernel function.\n");
 				return false;
 			}
-			if (i == EXTERNAL) {
-				void *lib_handle = dlopen("./libsvm_kernel.so.1.0.1",
-						RTLD_NOW | RTLD_GLOBAL);
-				if (lib_handle == NULL) {
-					printf("Failed loading lib\n");
-					exit(1);
-				}
-				void (*init)() = (void(*)())dlsym(lib_handle,"init");
-				if (init!=NULL)
-					init();
-				custom_kernel = (double (*)(const svm_node*,
-						const svm_node*))dlsym(lib_handle,"kernel");
-				if (custom_kernel==NULL) {
-					printf("Missing kernel function in kernel library\n");
-					exit(1);			
-				}
-				printf("Loaded lib successfully\n");
-
-				}
-			} else if (strcmp(cmd, "degree") == 0)
+		} else if (strcmp(cmd, "degree") == 0)
 			FSCANF(fp, "%d", &param.degree);
-			else if (strcmp(cmd, "gamma") == 0)
+		else if (strcmp(cmd, "gamma") == 0)
 			FSCANF(fp, "%lf", &param.gamma);
-			else if (strcmp(cmd, "coef0") == 0)
+		else if (strcmp(cmd, "coef0") == 0)
 			FSCANF(fp, "%lf", &param.coef0);
-			else if (strcmp(cmd, "nr_class") == 0)
+		else if (strcmp(cmd, "nr_class") == 0)
 			FSCANF(fp, "%d", &model->nr_class);
-			else if (strcmp(cmd, "total_sv") == 0)
+		else if (strcmp(cmd, "total_sv") == 0)
 			FSCANF(fp, "%d", &model->l);
-			else if (strcmp(cmd, "rho") == 0) {
-				int n = model->nr_class * (model->nr_class - 1) / 2;
-				model->rho = Malloc(double, n);
-				for (int i = 0; i < n; i++)
+		else if (strcmp(cmd, "rho") == 0) {
+			int n = model->nr_class * (model->nr_class - 1) / 2;
+			model->rho = Malloc(double, n);
+			for (int i = 0; i < n; i++)
 				FSCANF(fp, "%lf", &model->rho[i]);
-			} else if (strcmp(cmd, "label") == 0) {
-				int n = model->nr_class;
-				model->label = Malloc(int, n);
-				for (int i = 0; i < n; i++)
+		} else if (strcmp(cmd, "label") == 0) {
+			int n = model->nr_class;
+			model->label = Malloc(int, n);
+			for (int i = 0; i < n; i++)
 				FSCANF(fp, "%d", &model->label[i]);
-			} else if (strcmp(cmd, "probA") == 0) {
-				int n = model->nr_class * (model->nr_class - 1) / 2;
-				model->probA = Malloc(double, n);
-				for (int i = 0; i < n; i++)
+		} else if (strcmp(cmd, "probA") == 0) {
+			int n = model->nr_class * (model->nr_class - 1) / 2;
+			model->probA = Malloc(double, n);
+			for (int i = 0; i < n; i++)
 				FSCANF(fp, "%lf", &model->probA[i]);
-			} else if (strcmp(cmd, "probB") == 0) {
-				int n = model->nr_class * (model->nr_class - 1) / 2;
-				model->probB = Malloc(double, n);
-				for (int i = 0; i < n; i++)
+		} else if (strcmp(cmd, "probB") == 0) {
+			int n = model->nr_class * (model->nr_class - 1) / 2;
+			model->probB = Malloc(double, n);
+			for (int i = 0; i < n; i++)
 				FSCANF(fp, "%lf", &model->probB[i]);
-			} else if (strcmp(cmd, "nr_sv") == 0) {
-				int n = model->nr_class;
-				model->nSV = Malloc(int, n);
-				for (int i = 0; i < n; i++)
+		} else if (strcmp(cmd, "nr_sv") == 0) {
+			int n = model->nr_class;
+			model->nSV = Malloc(int, n);
+			for (int i = 0; i < n; i++)
 				FSCANF(fp, "%d", &model->nSV[i]);
-			} else if (strcmp(cmd, "SV") == 0) {
-				while (1) {
-					int c = getc(fp);
-					if (c == EOF || c == '\n')
+		} else if (strcmp(cmd, "kernelLibName") == 0) {
+			param.kernelLibName = Malloc(char,256);
+			FSCANF(fp, "%255s", param.kernelLibName); 
+		} else if (strcmp(cmd, "kernelLibParams") == 0) {
+			param.kernelLibParams = Malloc(char,256);
+			FSCANF(fp, "%255s", param.kernelLibParams);
+		} else if (strcmp(cmd, "SV") == 0) {
+			while (1) {
+				int c = getc(fp);
+				if (c == EOF || c == '\n')
 					break;
-				}
-				break;
-			} else {
-				fprintf(stderr, "unknown text in model file: [%s]\n", cmd);
-				return false;
 			}
+			break;
+		} else {
+			fprintf(stderr, "unknown text in model file: [%s]\n", cmd);
+			return false;
 		}
-
+	}
+	if (param.kernel_type == EXTERNAL) {
+		void *lib_handle = dlopen(param.kernelLibName,
+				RTLD_NOW | RTLD_GLOBAL);
+		if (lib_handle == NULL) {
+			printf("Failed loading external kernel\n");
+			exit(1);
+		}
+		void (*init)(char *) = (void(*)(char *))dlsym(lib_handle,"init");
+		if (init != NULL)
+			init(param.kernelLibParams);
+		custom_kernel = (double (*)(const svm_node*,const svm_node*))dlsym(lib_handle,"kernel");
+		if (custom_kernel==NULL) {
+			printf("Cannot find kernel function in kernel library %s\n",param.kernelLibName);
+			printf("dlerror() returns: [%s]\n",dlerror());
+			exit(1);
+		}
+		printf("Loaded external kernel successfully\n");
+	}
 	return true;
 
 }

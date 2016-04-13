@@ -4,16 +4,39 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+
 #include "svm.h"
 
 double gammaParam = 1.0;
 
-void init() {
-	const char *s = getenv("GAMMA");
-	if (s==NULL)
-		return;
-	gammaParam = strtod(s,NULL);
-	if (gammaParam==0.0) {
+enum
+{
+  GAMMA_OPTION = 0,
+  THE_END
+};
+
+char * const kernel_opts[] =
+{
+  [GAMMA_OPTION] = "gamma",
+  [THE_END] = NULL
+};
+
+
+void init(char * params) {
+	char *value;
+	char *subopts = params;
+	while (*subopts != '\0')
+		switch (getsubopt(&subopts, kernel_opts, &value)) {
+		case GAMMA_OPTION:
+			gammaParam = strtod(value, NULL);
+			break;
+		default:
+			/* Unknown sub-option. */
+			printf("TanimotoRBF: Unknown kernel option `%s'\n", value);
+			exit(1);
+		}
+
+	if (gammaParam == 0.0) {
 		printf("Parameter 'gamma' for kernel not correctly set.");
 		exit(1);
 	}
