@@ -1,6 +1,6 @@
-# Arbitrary kernel in LIBSVM
+# Multi-core support and Arbitrary kernel in LIBSVM
 This is a fork of LIBSVM which adds support for arbitrary kernels, implemented as an external dynamically loaded library.
-(It also incorporates the patch that enables OpenMP multi-core support).
+It also incorporates the patch that enables OpenMP multi-core support and extend the support to other portions of the code.
 This fork was tested only on OpenSUSE and CentOS.
 
 ## New options
@@ -17,9 +17,27 @@ The dynamic library implementing the kernel must expose two functions:
 
 `kernel()` takes two *objects* and is supposed to return the value of the kernel for those two objects.
 
-You can refer to `tanimotoRbf_kernel.c` is a complete example.
+You can refer to `tanimotoRbf_kernel.c` for a complete example. It implements a kernel which is the composition of Gaussian RBF (with its bandwidth parameter $\gamma$) and the Tanimoto coefficient:
+$ T(A,B) = \frac{\sum_{i=1}^d \min(a_i,b_i)}{\sum_{i=1}^d (a_i + b_i) - \sum_{i=1}^d \min(a_i,b_i)} $ 
 
 To obtain a library from `tanimotoRbf_kernel.c`, one can use the following commands:
 `gcc -fPIC -c -Wall tanimotoRbf_kernel.c`
 `gcc -shared tanimotoRbf_kernel.o -Wl,-soname,tanimotoRbf_kernel.1 -o tanimotoRbf_kernel.so.1.0.1 -lc`
+
+## OpenMP support
+In this fork, multi-core is supported when:
+- Computing kernel values
+- Selecting the new working set
+
+The patch suggested in LIBSVM FAQ only addresses the first item. This is enough in many cases, because generally the majority of CPU time is spent calculating the kernel values.
+
+However, the last statement is not always true.
+
+If multicore is applied only for kernel computations, one would observe that, especially for larger problems (say, 150k training examples) and for large cache sizes (option `-m` set to, say, 80000, i.e. 80GB) the processor occupancy on a system with many cores drops often to 100% (from the max of N*100% in a system with N cores) indicating "no parallelism" and eventually stays most of the time at that level.
+This happens when the cache manages to serve many hits and therefore there is no need to recalculate the kernel.
+
+It can be argued that with default cache size values, a lot of CPU is spent actually **recalculating** the kernel values.
+
+
+ 
 

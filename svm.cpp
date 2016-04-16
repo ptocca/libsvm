@@ -787,47 +787,66 @@ int Solver::select_working_set(int &out_i, int &out_j) {
 	const Qfloat *Q_i = NULL;
 	if (i != -1) // NULL Q_i not accessed: Gmax=-INF if i=-1
 		Q_i = Q->get_Q(i, active_size);
+#pragma omp parallel 
+	{
+		double Gmax2_private = -INF;
+		
+		int Gmin_idx_private = -1;
+		double obj_diff_min_private = INF;
 
-	for (int j = 0; j < active_size; j++) {
-		if (y[j] == +1) {
-			if (!is_lower_bound(j)) {
-				double grad_diff = Gmax + G[j];
-				if (G[j] >= Gmax2)
-					Gmax2 = G[j];
-				if (grad_diff > 0) {
-					double obj_diff;
-					double quad_coef = QD[i] + QD[j] - 2.0 * y[i] * Q_i[j];
-					if (quad_coef > 0)
-						obj_diff = -(grad_diff * grad_diff) / quad_coef;
-					else
-						obj_diff = -(grad_diff * grad_diff) / TAU;
+#pragma omp for nowait
+		for (int j = 0; j < active_size; j++) {
+			if (y[j] == +1) {
+				if (!is_lower_bound(j)) {
+					double grad_diff = Gmax + G[j];
+					if (G[j] >= Gmax2_private)
+						Gmax2_private = G[j];
+					if (grad_diff > 0) {
+						double obj_diff;
+						double quad_coef = QD[i] + QD[j] - 2.0 * y[i] * Q_i[j];
+						if (quad_coef > 0)
+							obj_diff = -(grad_diff * grad_diff) / quad_coef;
+						else
+							obj_diff = -(grad_diff * grad_diff) / TAU;
 
-					if (obj_diff <= obj_diff_min) {
-						Gmin_idx = j;
-						obj_diff_min = obj_diff;
+						if (obj_diff <= obj_diff_min_private) {
+							Gmin_idx_private = j;
+							obj_diff_min_private = obj_diff;
+						}
 					}
 				}
-			}
-		} else {
-			if (!is_upper_bound(j)) {
-				double grad_diff = Gmax - G[j];
-				if (-G[j] >= Gmax2)
-					Gmax2 = -G[j];
-				if (grad_diff > 0) {
-					double obj_diff;
-					double quad_coef = QD[i] + QD[j] + 2.0 * y[i] * Q_i[j];
-					if (quad_coef > 0)
-						obj_diff = -(grad_diff * grad_diff) / quad_coef;
-					else
-						obj_diff = -(grad_diff * grad_diff) / TAU;
+			} else {
+				if (!is_upper_bound(j)) {
+					double grad_diff = Gmax - G[j];
+					if (-G[j] >= Gmax2_private)
+						Gmax2_private = -G[j];
+					if (grad_diff > 0) {
+						double obj_diff;
+						double quad_coef = QD[i] + QD[j] + 2.0 * y[i] * Q_i[j];
+						if (quad_coef > 0)
+							obj_diff = -(grad_diff * grad_diff) / quad_coef;
+						else
+							obj_diff = -(grad_diff * grad_diff) / TAU;
 
-					if (obj_diff <= obj_diff_min) {
-						Gmin_idx = j;
-						obj_diff_min = obj_diff;
+						if (obj_diff <= obj_diff_min_private) {
+							Gmin_idx_private = j;
+							obj_diff_min_private = obj_diff;
+						}
 					}
 				}
 			}
 		}
+#pragma omp critical
+		{
+			if (Gmax2_private > Gmax2)
+				Gmax2 = Gmax2_private;
+
+			if (obj_diff_min_private < obj_diff_min) {
+				obj_diff_min = obj_diff_min_private;
+				Gmin_idx = Gmin_idx_private;
+			}
+
+		}		
 	}
 
 	if (Gmax + Gmax2 < eps || Gmin_idx == -1)
@@ -999,7 +1018,7 @@ int Solver_NU::select_working_set(int &out_i, int &out_j) {
 	if (in != -1)
 		Q_in = Q->get_Q(in, active_size);
 
-// Consider http://stackoverflow.com/questions/24782038/omp-max-reduction-with-storage-of-index
+// from http://stackoverflow.com/questions/24782038/omp-max-reduction-with-storage-of-index
 #pragma omp parallel 
 	{
 		double Gmaxp2_private = -INF;
@@ -1013,8 +1032,8 @@ int Solver_NU::select_working_set(int &out_i, int &out_j) {
 			if (y[j] == +1) {
 				if (!is_lower_bound(j)) {
 					double grad_diff = Gmaxp + G[j];
-					if (G[j] >= Gmaxp2)
-						Gmaxp2 = G[j];
+					if (G[j] >= Gmaxp2_private)
+						Gmaxp2_private = G[j];
 					if (grad_diff > 0) {
 						double obj_diff;
 						double quad_coef = QD[ip] + QD[j] - 2 * Q_ip[j];
@@ -1023,9 +1042,9 @@ int Solver_NU::select_working_set(int &out_i, int &out_j) {
 						else
 							obj_diff = -(grad_diff * grad_diff) / TAU;
 
-						if (obj_diff <= obj_diff_min) {
-							Gmin_idx = j;
-							obj_diff_min = obj_diff;
+						if (obj_diff <= obj_diff_min_private) {
+							Gmin_idx_private = j;
+							obj_diff_min_private = obj_diff;
 						}
 					}
 				}
@@ -1033,7 +1052,7 @@ int Solver_NU::select_working_set(int &out_i, int &out_j) {
 				if (!is_upper_bound(j)) {
 					double grad_diff = Gmaxn - G[j];
 					if (-G[j] >= Gmaxn2)
-						Gmaxn2 = -G[j];
+						Gmaxn2_private = -G[j];
 					if (grad_diff > 0) {
 						double obj_diff;
 						double quad_coef = QD[in] + QD[j] - 2 * Q_in[j];
@@ -1042,9 +1061,9 @@ int Solver_NU::select_working_set(int &out_i, int &out_j) {
 						else
 							obj_diff = -(grad_diff * grad_diff) / TAU;
 
-						if (obj_diff <= obj_diff_min) {
-							Gmin_idx = j;
-							obj_diff_min = obj_diff;
+						if (obj_diff <= obj_diff_min_private) {
+							Gmin_idx_private = j;
+							obj_diff_min_private = obj_diff;
 						}
 					}
 				}
