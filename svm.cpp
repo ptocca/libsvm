@@ -999,47 +999,73 @@ int Solver_NU::select_working_set(int &out_i, int &out_j) {
 	if (in != -1)
 		Q_in = Q->get_Q(in, active_size);
 
-	for (int j = 0; j < active_size; j++) {
-		if (y[j] == +1) {
-			if (!is_lower_bound(j)) {
-				double grad_diff = Gmaxp + G[j];
-				if (G[j] >= Gmaxp2)
-					Gmaxp2 = G[j];
-				if (grad_diff > 0) {
-					double obj_diff;
-					double quad_coef = QD[ip] + QD[j] - 2 * Q_ip[j];
-					if (quad_coef > 0)
-						obj_diff = -(grad_diff * grad_diff) / quad_coef;
-					else
-						obj_diff = -(grad_diff * grad_diff) / TAU;
+// Consider http://stackoverflow.com/questions/24782038/omp-max-reduction-with-storage-of-index
+#pragma omp parallel 
+	{
+		double Gmaxp2_private = -INF;
+		double Gmaxn2_private = -INF;
 
-					if (obj_diff <= obj_diff_min) {
-						Gmin_idx = j;
-						obj_diff_min = obj_diff;
+		int Gmin_idx_private = -1;
+		double obj_diff_min_private = INF;
+
+#pragma omp for nowait
+		for (int j = 0; j < active_size; j++) {
+			if (y[j] == +1) {
+				if (!is_lower_bound(j)) {
+					double grad_diff = Gmaxp + G[j];
+					if (G[j] >= Gmaxp2)
+						Gmaxp2 = G[j];
+					if (grad_diff > 0) {
+						double obj_diff;
+						double quad_coef = QD[ip] + QD[j] - 2 * Q_ip[j];
+						if (quad_coef > 0)
+							obj_diff = -(grad_diff * grad_diff) / quad_coef;
+						else
+							obj_diff = -(grad_diff * grad_diff) / TAU;
+
+						if (obj_diff <= obj_diff_min) {
+							Gmin_idx = j;
+							obj_diff_min = obj_diff;
+						}
 					}
 				}
-			}
-		} else {
-			if (!is_upper_bound(j)) {
-				double grad_diff = Gmaxn - G[j];
-				if (-G[j] >= Gmaxn2)
-					Gmaxn2 = -G[j];
-				if (grad_diff > 0) {
-					double obj_diff;
-					double quad_coef = QD[in] + QD[j] - 2 * Q_in[j];
-					if (quad_coef > 0)
-						obj_diff = -(grad_diff * grad_diff) / quad_coef;
-					else
-						obj_diff = -(grad_diff * grad_diff) / TAU;
+			} else {
+				if (!is_upper_bound(j)) {
+					double grad_diff = Gmaxn - G[j];
+					if (-G[j] >= Gmaxn2)
+						Gmaxn2 = -G[j];
+					if (grad_diff > 0) {
+						double obj_diff;
+						double quad_coef = QD[in] + QD[j] - 2 * Q_in[j];
+						if (quad_coef > 0)
+							obj_diff = -(grad_diff * grad_diff) / quad_coef;
+						else
+							obj_diff = -(grad_diff * grad_diff) / TAU;
 
-					if (obj_diff <= obj_diff_min) {
-						Gmin_idx = j;
-						obj_diff_min = obj_diff;
+						if (obj_diff <= obj_diff_min) {
+							Gmin_idx = j;
+							obj_diff_min = obj_diff;
+						}
 					}
 				}
 			}
 		}
+
+#pragma omp critical
+		{
+			if (Gmaxp2_private > Gmaxp2)
+				Gmaxp2 = Gmaxp2_private;
+			if (Gmaxn2_private > Gmaxn2)
+				Gmaxn2 = Gmaxn2_private;
+
+			if (obj_diff_min_private < obj_diff_min) {
+				obj_diff_min = obj_diff_min_private;
+				Gmin_idx = Gmin_idx_private;
+			}
+
+		}
 	}
+	// ends the block for the parallel pragma
 
 	if (max(Gmaxp + Gmaxp2, Gmaxn + Gmaxn2) < eps || Gmin_idx == -1)
 		return 1;
@@ -2625,10 +2651,10 @@ bool read_model_header(FILE *fp, svm_model* model) {
 			for (int i = 0; i < n; i++)
 				FSCANF(fp, "%d", &model->nSV[i]);
 		} else if (strcmp(cmd, "kernelLibName") == 0) {
-			param.kernelLibName = Malloc(char,256);
-			FSCANF(fp, "%255s", param.kernelLibName); 
+			param.kernelLibName = Malloc(char, 256);
+			FSCANF(fp, "%255s", param.kernelLibName);
 		} else if (strcmp(cmd, "kernelLibParams") == 0) {
-			param.kernelLibParams = Malloc(char,256);
+			param.kernelLibParams = Malloc(char, 256);
 			FSCANF(fp, "%255s", param.kernelLibParams);
 		} else if (strcmp(cmd, "SV") == 0) {
 			while (1) {
@@ -2643,8 +2669,7 @@ bool read_model_header(FILE *fp, svm_model* model) {
 		}
 	}
 	if (param.kernel_type == EXTERNAL) {
-		void *lib_handle = dlopen(param.kernelLibName,
-				RTLD_NOW | RTLD_GLOBAL);
+		void *lib_handle = dlopen(param.kernelLibName, RTLD_NOW | RTLD_GLOBAL);
 		if (lib_handle == NULL) {
 			printf("Failed loading external kernel\n");
 			exit(1);
@@ -2652,8 +2677,9 @@ bool read_model_header(FILE *fp, svm_model* model) {
 		void (*init)(char *) = (void(*)(char *))dlsym(lib_handle,"init");
 		if (init != NULL)
 			init(param.kernelLibParams);
-		custom_kernel = (double (*)(const svm_node*,const svm_node*))dlsym(lib_handle,"kernel");
-		if (custom_kernel==NULL) {
+		custom_kernel = (double (*)(const svm_node*,
+				const svm_node*))dlsym(lib_handle,"kernel");if
+(		custom_kernel==NULL) {
 			printf("Cannot find kernel function in kernel library %s\n",param.kernelLibName);
 			printf("dlerror() returns: [%s]\n",dlerror());
 			exit(1);
