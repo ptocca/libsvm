@@ -668,6 +668,7 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 		double delta_alpha_i = alpha[i] - old_alpha_i;
 		double delta_alpha_j = alpha[j] - old_alpha_j;
 
+#pragma omp parallel for
 		for (int k = 0; k < active_size; k++) {
 			G[k] += Q_i[k] * delta_alpha_i + Q_j[k] * delta_alpha_j;
 		}
@@ -679,24 +680,28 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 			bool uj = is_upper_bound(j);
 			update_alpha_status(i);
 			update_alpha_status(j);
-			int k;
+
 			if (ui != is_upper_bound(i)) {
 				Q_i = Q.get_Q(i, l);
 				if (ui)
-					for (k = 0; k < l; k++)
+#pragma omp parallel for
+					for (int k = 0; k < l; k++)
 						G_bar[k] -= C_i * Q_i[k];
 				else
-					for (k = 0; k < l; k++)
+#pragma omp parallel for
+					for (int k = 0; k < l; k++)
 						G_bar[k] += C_i * Q_i[k];
 			}
 
 			if (uj != is_upper_bound(j)) {
 				Q_j = Q.get_Q(j, l);
 				if (uj)
-					for (k = 0; k < l; k++)
+#pragma omp parallel for
+					for (int k = 0; k < l; k++)
 						G_bar[k] -= C_j * Q_j[k];
 				else
-					for (k = 0; k < l; k++)
+#pragma omp parallel for
+					for (int k = 0; k < l; k++)
 						G_bar[k] += C_j * Q_j[k];
 			}
 		}
@@ -787,6 +792,7 @@ int Solver::select_working_set(int &out_i, int &out_j) {
 	const Qfloat *Q_i = NULL;
 	if (i != -1) // NULL Q_i not accessed: Gmax=-INF if i=-1
 		Q_i = Q->get_Q(i, active_size);
+
 #pragma omp parallel 
 	{
 		double Gmax2_private = -INF;
