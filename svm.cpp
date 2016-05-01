@@ -175,7 +175,7 @@ void Cache::swap_index(int i, int j) {
 
 	if (i > j)
 		swap(i, j);
-    if (numOfElems < l/16 || l<10000) {
+    if (numOfElems < l/64 || l<10000) {
 		for (head_t *h = lru_head.next; h != &lru_head; h = h->next) {
 			if (h->len > i) {
 				if (h->len > j)
