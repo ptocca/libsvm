@@ -81,6 +81,7 @@ public:
 	void swap_index(int i, int j);
 private:
 	int l;
+	int numOfElems;
 	long int size;
 	struct head_t {
 		head_t *prev, *next;	// a circular list
@@ -101,6 +102,8 @@ Cache::Cache(int l_, long int size_) :
 	size -= l * sizeof(head_t) / sizeof(Qfloat);
 	size = max(size, 2 * (long int) l);	// cache must be large enough for two columns
 	lru_head.next = lru_head.prev = &lru_head;
+
+	numOfElems = 0;
 }
 
 Cache::~Cache() {
@@ -113,6 +116,8 @@ void Cache::lru_delete(head_t *h) {
 	// delete from current location
 	h->prev->next = h->next;
 	h->next->prev = h->prev;
+
+	numOfElems--;
 }
 
 void Cache::lru_insert(head_t *h) {
@@ -121,6 +126,8 @@ void Cache::lru_insert(head_t *h) {
 	h->prev = lru_head.prev;
 	h->prev->next = h;
 	h->next->prev = h;
+
+	numOfElems++;
 }
 
 int Cache::get_data(const int index, Qfloat **data, int len) {
@@ -168,40 +175,40 @@ void Cache::swap_index(int i, int j) {
 
 	if (i > j)
 		swap(i, j);
-#if 0
-	for (head_t *h = lru_head.next; h != &lru_head; h = h->next) {
-		if (h->len > i) {
-			if (h->len > j)
-				swap(h->data[i], h->data[j]);
-			else {
-				// give up
-				lru_delete(h);
-				free(h->data);
-				size += h->len;
-				h->data = 0;
-				h->len = 0;
+    if (numOfElems < l/16 || l<10000) {
+		for (head_t *h = lru_head.next; h != &lru_head; h = h->next) {
+			if (h->len > i) {
+				if (h->len > j)
+					swap(h->data[i], h->data[j]);
+				else {
+					// give up
+					lru_delete(h);
+					free(h->data);
+					size += h->len;
+					h->data = 0;
+					h->len = 0;
+				}
 			}
 		}
-	}
-#else
+	} else {
 #pragma omp parallel for
-	for (int cur=0; cur<l; cur++) {
-		head_t *h = head+cur;
-		if (h->len > i) {
-			if (h->len > j)
-				swap(h->data[i], h->data[j]);
-			else {
-				// give up
-				lru_delete(h);
-				free(h->data);
-				size += h->len;
-				h->data = 0;
-				h->len = 0;
+		for (int cur = 0; cur < l; cur++) {
+			head_t *h = head + cur;
+			if (h->len > i) {
+				if (h->len > j)
+					swap(h->data[i], h->data[j]);
+				else {
+					// give up
+					lru_delete(h);
+					free(h->data);
+					size += h->len;
+					h->data = 0;
+					h->len = 0;
+				}
 			}
 		}
 	}
 }
-#endif
 //
 // Kernel evaluation
 //
