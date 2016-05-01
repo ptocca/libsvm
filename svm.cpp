@@ -168,6 +168,7 @@ void Cache::swap_index(int i, int j) {
 
 	if (i > j)
 		swap(i, j);
+#if 0
 	for (head_t *h = lru_head.next; h != &lru_head; h = h->next) {
 		if (h->len > i) {
 			if (h->len > j)
@@ -182,8 +183,25 @@ void Cache::swap_index(int i, int j) {
 			}
 		}
 	}
+#else
+#pragma omp parallel for
+	for (int cur=0; cur<l; cur++) {
+		head_t *h = head+cur;
+		if (h->len > i) {
+			if (h->len > j)
+				swap(h->data[i], h->data[j]);
+			else {
+				// give up
+				lru_delete(h);
+				free(h->data);
+				size += h->len;
+				h->data = 0;
+				h->len = 0;
+			}
+		}
+	}
 }
-
+#endif
 //
 // Kernel evaluation
 //
