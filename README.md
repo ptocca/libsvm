@@ -37,12 +37,12 @@ In this fork, parallelization on multi-core via OpenMP is supported when:
 
 The patch suggested in LIBSVM FAQ only addresses the first item. This is enough in many cases, because generally the majority of CPU time is spent calculating the kernel values.
 
-However, the last statement is not always true.
+However, this last statement is not always true.
 
-If multicore is applied only for kernel computations, one would observe that, especially for larger problems (say, 150k training examples) and for large cache sizes (option `-m` set to, say, 80000, i.e. 80GB) the processor occupancy on a system with many cores drops often to 100% (from the max of N*100% in a system with N cores) indicating "no parallelism" and eventually stays most of the time at that level.
+With parallelization applied only to kernel computations, one would observe that, especially for larger problems (say, 150k training examples) and for large cache sizes (option `-m` set to, say, 80000, i.e. 80GB) the processor occupancy on a system with many cores drops often to 100% (from the max of N*100% in a system with N cores) indicating "no parallelism" and eventually stays most of the time at that level.
 This happens when the cache manages to serve many hits and therefore there is no need to recalculate the kernel.
 
-One would notice this behaviour unless the cache is big enough for the hit rate to be large.
+One would not notice this behaviour unless the cache is big enough for the hit rate to be large.
 
-Also, investigations indicated that the majority of CPU time when the "no parallelism" issue occurs is spent in Cache::swap_index(). Its cost in fact increases linearly with the size of the cache.  
+Also, investigations indicated that the majority of CPU time when the "no parallelism" issue occurs is spent in Cache::swap_index(). Its cost in fact increases linearly with the size of the cache. This is one more reason for the "no parallelism" condition to arise for large sizes of the kernel cache.
 
