@@ -175,7 +175,7 @@ void Cache::swap_index(int i, int j) {
 
 	if (i > j)
 		swap(i, j);
-    if (numOfElems < l/512 || l<1000) {
+#if 0 //    if (numOfElems < l/1024 || l<1000) {
 		for (head_t *h = lru_head.next; h != &lru_head; h = h->next) {
 			if (h->len > i) {
 				if (h->len > j)
@@ -190,7 +190,7 @@ void Cache::swap_index(int i, int j) {
 				}
 			}
 		}
-	} else {
+#else //	} else {
 #pragma omp parallel for
 		for (int cur = 0; cur < l; cur++) {
 			head_t *h = head + cur;
@@ -208,7 +208,7 @@ void Cache::swap_index(int i, int j) {
 			}
 		}
 	}
-}
+#endif //  }
 //
 // Kernel evaluation
 //
