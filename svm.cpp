@@ -306,11 +306,12 @@ Kernel::Kernel(int l, svm_node * const * x_, const svm_parameter& param) :
 		if (init != NULL)
 			init(param.kernelLibParams);
 		custom_kernel = (double (*)(const svm_node*,
-				const svm_node*))dlsym(lib_handle,"kernel");if (custom_kernel==NULL) {
+				const svm_node*))dlsym(lib_handle,"kernel");
+		if (custom_kernel==NULL) {
 			printf("Missing kernel function in kernel library\n");
 			exit(1);
 		}
-		printf("Loaded lib successfully (Kernel::Kernel)\n");
+		printf("Loaded lib successfully\n");
 		kernel_function = &Kernel::kernel_external;
 	}
 

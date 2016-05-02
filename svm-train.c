@@ -25,7 +25,7 @@ void exit_with_help()
 	"	2 -- radial basis function: exp(-gamma*|u-v|^2)\n"
 	"	3 -- sigmoid: tanh(gamma*u'*v + coef0)\n"
 	"	4 -- precomputed kernel (kernel values in training_set_file)\n"
-	"   5 -- kernel function in dynamically loaded library\n"
+	"	5 -- kernel function in dynamically loaded library\n"
 	"-d degree : set degree in kernel function (default 3)\n"
 	"-g gamma : set gamma in kernel function (default 1/num_features)\n"
 	"-r coef0 : set coef0 in kernel function (default 0)\n"
@@ -38,8 +38,9 @@ void exit_with_help()
 	"-b probability_estimates : whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0)\n"
 	"-wi weight : set the parameter C of class i to weight*C, for C-SVC (default 1)\n"
 	"-v n: n-fold cross validation mode\n"
-	"-l libFileName"
-	"-x kernelParams"
+	"-l libFileName : filename of the library (when -t 5 was specified)\n"
+	"-x kernelParams : parameters for the custom kernel (-t 5)\n"
+	"-V : print version\n"		
 	"-q : quiet mode (no outputs)\n"
 	);
 	exit(1);
@@ -255,6 +256,10 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 				break;
 			case 'x':
 				(void)sscanf(argv[i],"%ms",&param.kernelLibParams);
+				break;
+			case 'V':
+				extern char *gitversion;
+				printf("Version: %s\n",gitversion);
 				break;
 			default:
 				fprintf(stderr,"Unknown option: -%c\n", argv[i-1][1]);

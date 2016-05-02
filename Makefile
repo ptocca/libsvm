@@ -13,13 +13,16 @@ lib: svm.o
 	fi; \
 	$(CXX) $${SHARED_LIB_FLAG} svm.o -o libsvm.so.$(SHVER)
 
-svm-predict: svm-predict.c svm.o
-	$(CXX) $(CFLAGS) svm-predict.c svm.o -o svm-predict -lm -ldl
-svm-train: svm-train.c svm.o
-	$(CXX) $(CFLAGS) svm-train.c svm.o -o svm-train -lm -ldl
-svm-scale: svm-scale.c
-	$(CXX) $(CFLAGS) svm-scale.c -o svm-scale
+gitversion.c: .git/HEAD .git/index
+	echo "const char *gitversion = \"$(shell git describe --abbrev=4 --dirty --always --tags)\";" > $@
+	
+svm-predict: svm-predict.c svm.o gitversion.o
+	$(CXX) $(CFLAGS) svm-predict.c svm.o gitversion.o -o svm-predict -lm -ldl
+svm-train: svm-train.c svm.o gitversion.o
+	$(CXX) $(CFLAGS) svm-train.c svm.o gitversion.o -o svm-train -lm -ldl
+svm-scale: svm-scale.c gitversion.o
+	$(CXX) $(CFLAGS) svm-scale.c gitversion.o -o svm-scale
 svm.o: svm.cpp svm.h
 	$(CXX) $(CFLAGS) -c svm.cpp
 clean:
-	rm -f *~ svm.o svm-train svm-predict svm-scale libsvm.so.$(SHVER)
+	rm -f *~ svm.o svm-train svm-predict svm-scale libsvm.so.$(SHVER) gitversion.o
