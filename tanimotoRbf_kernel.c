@@ -25,6 +25,10 @@ char * const kernel_opts[] =
 void init(char * params) {
 	char *value;
 	char *subopts = params;
+
+	if (params==NULL)
+		return
+
 	while (*subopts != '\0')
 		switch (getsubopt(&subopts, kernel_opts, &value)) {
 		case GAMMA_OPTION:
