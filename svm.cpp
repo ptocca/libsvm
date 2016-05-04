@@ -2535,7 +2535,8 @@ int svm_save_model(const char *model_file_name, const svm_model *model) {
 
 	if (param.kernel_type == EXTERNAL) {
 		fprintf(fp, "kernelLibName %s\n", param.kernelLibName);
-		fprintf(fp, "kernelLibParams %s\n", param.kernelLibParams);
+		if (strcmp(param.kernelLibParams,""))
+			fprintf(fp, "kernelLibParams %s\n", param.kernelLibParams);
 	}
 
 	int nr_class = model->nr_class;
