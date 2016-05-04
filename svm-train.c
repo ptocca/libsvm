@@ -185,7 +185,7 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 	param.weight = NULL;
 	cross_validation = 0;
 	param.kernelLibName = NULL;
-	param.kernelLibParams = NULL;
+	param.kernelLibParams = "";
 
 	// parse options
 	for(i=1;i<argc;i++)
