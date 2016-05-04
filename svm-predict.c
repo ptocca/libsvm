@@ -9,11 +9,15 @@ int print_null(const char *s,...) {return 0;}
 
 static int (*info)(const char *fmt,...) = &printf;
 
+#define Malloc(type,n) (type *)malloc((n)*sizeof(type))
+
 struct svm_node *x;
 int max_nr_attr = 64;
 
 struct svm_model* model;
 int predict_probability=0;
+
+int output_scores = 0;
 
 static char *line = NULL;
 static int max_line_len;
@@ -127,8 +131,31 @@ void predict(FILE *input, FILE *output)
 		}
 		else
 		{
-			predict_label = svm_predict(model,x);
-			fprintf(output,"%g\n",predict_label);
+			if (output_scores) {
+				int nr_class = model->nr_class;
+				double *dec_values;
+				//TODO: Check this - it may make sense for
+				if (model->param.svm_type == ONE_CLASS
+						|| model->param.svm_type == EPSILON_SVR
+						|| model->param.svm_type == NU_SVR)
+					dec_values = Malloc(double, 1);
+				else
+					dec_values = Malloc(double, nr_class * (nr_class - 1) / 2);
+				predict_label = svm_predict_values(model, x, dec_values);
+
+				for (int i=0; i < nr_class * (nr_class - 1) / 2; i++ ) {
+					if (i>0)
+						fprintf(output," ");
+					fprintf(output,"%g",*(dec_values+i));
+				}
+				fprintf(output,"\n");
+
+				free(dec_values);
+			} else {
+				predict_label = svm_predict(model,x);
+				fprintf(output,"%g\n",predict_label);
+			}
+
 		}
 
 		if(predict_label == target_label)
@@ -183,6 +210,10 @@ int main(int argc, char **argv)
 				break;
 			case 'q':
 				info = &print_null;
+				i--;
+				break;
+			case 's':
+				output_scores = 1;
 				i--;
 				break;
 			default:
