@@ -2704,6 +2704,7 @@ bool read_model_header(FILE *fp, svm_model* model) {
 		} else if (strcmp(cmd, "kernelLibName") == 0) {
 			param.kernelLibName = Malloc(char, 256);
 			FSCANF(fp, "%255s", param.kernelLibName);
+			param.kernelLibParams="";
 		} else if (strcmp(cmd, "kernelLibParams") == 0) {
 			param.kernelLibParams = Malloc(char, 256);
 			FSCANF(fp, "%255s", param.kernelLibParams);
