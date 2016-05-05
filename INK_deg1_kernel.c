@@ -52,6 +52,9 @@ double kernel(const struct svm_node *px, const struct svm_node *py) {
 	double resYY = 1.0;
 	double x = 0.0;
 	double y = 0.0;
+
+	double res = 1.0;
+
 	while (px->index != -1 || py->index != -1) {
 		if (px->index == -1)
 			x = aParam;
@@ -71,10 +74,12 @@ double kernel(const struct svm_node *px, const struct svm_node *py) {
 
 		double m = fmin(x,y);
 
-		resXY *= (1.0 + x*y + 0.5*fabs(x-y)*m*m + m*m*m*0.33333333333333);
-		resXX *= (1.0 + x*x + x*x*x*0.33333333333333);
-		resYY *= (1.0 + y*y + y*y*y*0.33333333333333);
+		resXY = (1.0 + x*y + 0.5*fabs(x-y)*m*m + m*m*m*0.33333333333333);
+		resXX = (1.0 + x*x + x*x*x*0.33333333333333);
+		resYY = (1.0 + y*y + y*y*y*0.33333333333333);
+
+		res *= resXY/sqrt(resXX*resYY)
 
 	}
-	return resXY/sqrt(resXX*resYY);
+	return res;
 }
