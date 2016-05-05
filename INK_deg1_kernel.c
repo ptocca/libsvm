@@ -78,7 +78,7 @@ double kernel(const struct svm_node *px, const struct svm_node *py) {
 		resXX = (1.0 + x*x + x*x*x*0.33333333333333);
 		resYY = (1.0 + y*y + y*y*y*0.33333333333333);
 
-		res *= resXY/sqrt(resXX*resYY)
+		res *= resXY/sqrt(resXX*resYY);
 
 	}
 	return res;
