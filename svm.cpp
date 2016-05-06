@@ -197,7 +197,9 @@ void Cache::swap_index(int i, int j) {
 			if (h->len > i) {
 				if (h->len > j)
 					swap(h->data[i], h->data[j]);
-				else {
+				else
+#pragma omp critical
+				{
 					// give up
 					lru_delete(h);
 					free(h->data);
