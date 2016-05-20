@@ -11,6 +11,7 @@
 #include "svm.h"
 int libsvm_version = LIBSVM_VERSION;
 typedef float Qfloat;
+//typedef double Qfloat;
 typedef signed char schar;
 #ifndef min
 template<class T> static inline T min(T x, T y) {
@@ -48,6 +49,12 @@ static inline double powi(double base, int times) {
 static void print_string_stdout(const char *s) {
 	fputs(s, stdout);
 	fflush (stdout);
+	FILE *fp;
+	fp = fopen("svm-train.log","a");
+	if (fp) {
+		fputs(s,fp);
+		fclose(fp);
+	}
 }
 static void (*svm_print_string)(const char *) = &print_string_stdout;
 #if 1
@@ -534,6 +541,9 @@ void Solver::reconstruct_gradient() {
 	}
 }
 
+
+double optCriterion = 0.0;
+
 void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 		double *alpha_, double Cp, double Cn, double eps, SolutionInfo* si,
 		int shrinking) {
@@ -598,7 +608,15 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 			counter = min(l, 1000);
 			if (shrinking)
 				do_shrinking();
-			info(".");
+			// info(".");
+			// calculate objective value
+			{
+				double v = 0.0;
+				int i;
+				for (i = 0; i < l; i++)
+					v += alpha[i] * (G[i] + p[i]);
+				info("I %d %f %f\n",iter, v / 2 ,optCriterion);
+			}
 		}
 
 		int i, j;
@@ -607,7 +625,16 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 			reconstruct_gradient();
 			// reset active set size and check
 			active_size = l;
-			info("*");
+			// info("*");
+
+			// calculate objective value
+			{
+				double v = 0.0;
+				int i;
+				for (i = 0; i < l; i++)
+					v += alpha[i] * (G[i] + p[i]);
+				info("T %d %f\n",iter, v / 2);
+			}
 			if (select_working_set(i, j) != 0)
 				break;
 			else
@@ -629,8 +656,10 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 
 		if (y[i] != y[j]) {
 			double quad_coef = QD[i] + QD[j] + 2 * Q_i[j];
-			if (quad_coef <= 0)
+			if (quad_coef <= 0) {
 				quad_coef = TAU;
+				info("#");
+			}
 			double delta = (-G[i] - G[j]) / quad_coef;
 			double diff = alpha[i] - alpha[j];
 			alpha[i] += delta;
@@ -888,6 +917,8 @@ int Solver::select_working_set(int &out_i, int &out_j) {
 
 	out_i = Gmax_idx;
 	out_j = Gmin_idx;
+
+	optCriterion = Gmax+Gmax2;   // DEBUG Info
 	return 0;
 }
 
@@ -938,7 +969,15 @@ void Solver::do_shrinking() {
 		unshrink = true;
 		reconstruct_gradient();
 		active_size = l;
-		info("*");
+			// calculate objective value
+			{
+				double v = 0.0;
+				int i;
+				for (i = 0; i < l; i++)
+					v += alpha[i] * (G[i] + p[i]);
+				info("U %f\n", v / 2);
+			}
+		//info("*");
 	}
 
 	for (i = 0; i < active_size; i++)
