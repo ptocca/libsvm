@@ -190,7 +190,7 @@ void exit_with_help()
 	"options:\n"
 	"-b probability_estimates: whether to predict probability estimates, 0 or 1 (default 0); for one-class SVM only 0 is supported\n"
 	"-q : quiet mode (no outputs)\n"
-	"-s : output decision function values instead of predictions"
+	"-s : output decision function values instead of predictions\n"
 	);
 	exit(1);
 }
