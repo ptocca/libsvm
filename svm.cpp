@@ -629,8 +629,10 @@ void Solver::Solve(int l, const QMatrix& Q, const double *p_, const schar *y_,
 
 		if (y[i] != y[j]) {
 			double quad_coef = QD[i] + QD[j] + 2 * Q_i[j];
-			if (quad_coef <= 0)
+			if (quad_coef <= 0) {
 				quad_coef = TAU;
+				info("#");
+			}
 			double delta = (-G[i] - G[j]) / quad_coef;
 			double diff = alpha[i] - alpha[j];
 			alpha[i] += delta;
