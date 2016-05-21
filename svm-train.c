@@ -162,6 +162,8 @@ void do_cross_validation()
 	free(target);
 }
 
+extern char *gitversion;
+
 void parse_command_line(int argc, char **argv, char *input_file_name, char *model_file_name)
 {
 	int i;
@@ -258,7 +260,6 @@ void parse_command_line(int argc, char **argv, char *input_file_name, char *mode
 				(void)sscanf(argv[i],"%ms",&param.kernelLibParams);
 				break;
 			case 'V':
-				extern char *gitversion;
 				printf("Version: %s\n",gitversion);
 				break;
 			default:
