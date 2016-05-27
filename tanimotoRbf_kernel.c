@@ -27,7 +27,7 @@ void init(char * params) {
 	char *subopts = params;
 
 	if (params==NULL)
-		return
+		return;
 
 	while (*subopts != '\0')
 		switch (getsubopt(&subopts, kernel_opts, &value)) {
