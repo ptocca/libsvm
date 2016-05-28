@@ -15,7 +15,7 @@ double kernel(const struct svm_node *px, const struct svm_node *py) {
 		if (px->index == py->index) {
 			sumMin += ((px->value > py->value) ? py->value : px->value);
 			sumX += px->value;
-			sumY += px->value;
+			sumY += py->value;
 			++px;
 			++py;
 		} else {
